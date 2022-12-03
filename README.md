@@ -11,3 +11,6 @@ FIFA data from 2015-2022 on players in the Spanish League
 Logistic regression \
 Bayesian regression \
 Heirarchical model 
+
+### Table of contents
+The project_test.r file contains the most updated version of our R code for the project.
