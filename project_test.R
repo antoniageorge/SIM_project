@@ -4,6 +4,8 @@ library(gridExtra)
 setwd("~/Desktop")
 source(file.path("./SIM_project/helper_functions/routines_seminar1.R"))
 library("readxl")
+library(lme4)
+library(arm)
 
 # Load datasets
 f22 <- read_csv("./SIM_project/data/players_22.csv")
@@ -71,14 +73,14 @@ length(colnames(f15))
 # The 2021-2022 points data goes with FIFA 2022, since that is what we are trying to predict.
 
 # Import REAL end of season info (total number of points, wins, losses, etc. for each team)
-table22 <- read_excel("./Fifa22/LaLiga_results.xlsx", sheet = "2021-2022")
-table21 <- read_excel("./Fifa22/LaLiga_results.xlsx", sheet = "2020-2021")
-table20 <- read_excel("./Fifa22/LaLiga_results.xlsx", sheet = "2019-2020")
-table19 <- read_excel("./Fifa22/LaLiga_results.xlsx", sheet = "2018-2019")
-table18 <- read_excel("./Fifa22/LaLiga_results.xlsx", sheet = "2017-2018")
-table17 <- read_excel("./Fifa22/LaLiga_results.xlsx", sheet = "2016-2017")
-table16 <- read_excel("./Fifa22/LaLiga_results.xlsx", sheet = "2015-2016")
-table15 <- read_excel("./Fifa22/LaLiga_results.xlsx", sheet = "2014-2015")
+table22 <- read_excel("./SIM_project/data/LaLiga_results.xlsx", sheet = "2021-2022")
+table21 <- read_excel("./SIM_project/data/LaLiga_results.xlsx", sheet = "2020-2021")
+table20 <- read_excel("./SIM_project/data/LaLiga_results.xlsx", sheet = "2019-2020")
+table19 <- read_excel("./SIM_project/data/LaLiga_results.xlsx", sheet = "2018-2019")
+table18 <- read_excel("./SIM_project/data/LaLiga_results.xlsx", sheet = "2017-2018")
+table17 <- read_excel("./SIM_project/data/LaLiga_results.xlsx", sheet = "2016-2017")
+table16 <- read_excel("./SIM_project/data/LaLiga_results.xlsx", sheet = "2015-2016")
+table15 <- read_excel("./SIM_project/data/LaLiga_results.xlsx", sheet = "2014-2015")
 
 f22
 colnames(f22)
@@ -139,28 +141,28 @@ f16_sp[is.na(f16_sp)] <- 0
 f15_sp[is.na(f15_sp)] <- 0
 
 # Group dataframes by team.
-f22_sp <- f22_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
-f21_sp <- f21_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
-f20_sp <- f20_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
-f19_sp <- f19_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
-f18_sp <- f18_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
-f17_sp <- f17_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
-f16_sp <- f16_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
-f15_sp <- f15_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
+f22_gp <- f22_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
+f21_gp <- f21_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
+f20_gp <- f20_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
+f19_gp <- f19_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
+f18_gp <- f18_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
+f17_gp <- f17_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
+f16_gp <- f16_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
+f15_gp <- f15_sp %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
 
 # Join dataframes
-f22_sp <- left_join(f22_sp, table22, by = c("club_name"="Equipo"))
-f21_sp <- left_join(f21_sp, table21, by = c("club_name"="Equipo"))
-f20_sp <- left_join(f20_sp, table20, by = c("club_name"="Equipo"))
-f19_sp <- left_join(f19_sp, table19, by = c("club_name"="Equipo"))
-f18_sp <- left_join(f18_sp, table18, by = c("club_name"="Equipo"))
-f17_sp <- left_join(f17_sp, table17, by = c("club_name"="Equipo"))
-f16_sp <- left_join(f16_sp, table16, by = c("club_name"="Equipo"))
-f15_sp <- left_join(f15_sp, table15, by = c("club_name"="Equipo"))
+f22_gp <- left_join(f22_gp, table22, by = c("club_name"="Equipo"))
+f21_gp <- left_join(f21_gp, table21, by = c("club_name"="Equipo"))
+f20_gp <- left_join(f20_gp, table20, by = c("club_name"="Equipo"))
+f19_gp <- left_join(f19_gp, table19, by = c("club_name"="Equipo"))
+f18_gp <- left_join(f18_gp, table18, by = c("club_name"="Equipo"))
+f17_gp <- left_join(f17_gp, table17, by = c("club_name"="Equipo"))
+f16_gp <- left_join(f16_gp, table16, by = c("club_name"="Equipo"))
+f15_gp <- left_join(f15_gp, table15, by = c("club_name"="Equipo"))
 
 # Check for NAs in dataframe.
 for(i in 1:length(cols_to_choose)){
-  print(sum(is.na(f22_sp[i])))
+  print(sum(is.na(f22_gp[i])))
 }
 
 
@@ -168,13 +170,13 @@ for(i in 1:length(cols_to_choose)){
 # second_div_mult <- 0.5
 
 
-new_df <- bind_rows(f21_sp, f20_sp, f19_sp, f18_sp, f17_sp, f16_sp, f15_sp)
+new_df <- bind_rows(f21_gp, f20_gp, f19_gp, f18_gp, f17_gp, f16_gp, f15_gp)
 
 # Remove some columns
 colnames(new_df)
 cols_to_drop <- c( "Pos.", "PJ", "G", "E", "P", "GF", "GC", "Dif.", "Des", "Asc")
 new_df <- new_df[, !colnames(new_df) %in% cols_to_drop]
-f22_sp <- f22_sp[, !colnames(f22_sp) %in% cols_to_drop]
+f22_gp <- f22_gp[, !colnames(f22_sp) %in% cols_to_drop]
 
 # train
 y <- new_df$Pts.
@@ -204,7 +206,14 @@ b.lasso= as.vector(coef(fit.lasso, s=0.1))
 betas = data.frame("word" = c("intercept", colnames(x)), "beta_hat"= round(b.lasso, 5))
 betas %>% arrange(desc(abs(beta_hat)))
 
-# Test model on 22 dataset
+# Test base model on 22 dataset
+predictions <- predict(fit.lasso, newx = x_te)
+y_te$pred <-predictions
+y_te <- y_te %>% arrange(desc(Pts.))
+
+
+
+# Test other model on 22 dataset
 predictions <- predict(fit.lasso, newx = x_te)
 y_te$pred <-predictions
 y_te <- y_te %>% arrange(desc(Pts.))
@@ -216,3 +225,61 @@ y_te <- y_te %>% arrange(desc(Pts.))
 # For model
 # different values of lambda
 
+
+# -----------------------------------
+# --- BAYESIAN HIERARCHICAL MODEL ---
+# -----------------------------------
+
+fp22_hm <- left_join(f22_sp, table22, by = c("club_name"="Equipo"))
+fp21_hm <- left_join(f21_sp, table21, by = c("club_name"="Equipo"))
+fp20_hm <- left_join(f20_sp, table20, by = c("club_name"="Equipo"))
+fp19_hm <- left_join(f19_sp, table19, by = c("club_name"="Equipo"))
+fp18_hm <- left_join(f18_sp, table18, by = c("club_name"="Equipo"))
+fp17_hm <- left_join(f17_sp, table17, by = c("club_name"="Equipo"))
+fp16_hm <- left_join(f16_sp, table16, by = c("club_name"="Equipo"))
+fp15_hm <- left_join(f15_sp, table15, by = c("club_name"="Equipo"))
+
+
+cols_to_drop <- c( "Pos.", "PJ", "G", "E", "P", "GF", "GC", "Dif.", "Des", "Asc")
+
+y_te <- fp22_hm$Pts.
+hm_data <-bind_rows(fp21_hm, fp20_hm, fp19_hm, fp18_hm, fp17_hm, fp16_hm, fp15_hm)
+hm_data<- hm_data[, !colnames(hm_data) %in% cols_to_drop] 
+fp22_hm<- fp22_hm[, !colnames(fp22_hm) %in% cols_to_drop] 
+
+
+
+
+# fp22_hm[] <- lapply(fp22_hm, function(x) if(is.numeric(x)){
+#   scale(x, center=TRUE, scale=TRUE)
+#   } else x)
+
+# Check for NAs in dataframe.
+for(i in 1:length(cols_to_choose)){
+  print(sum(is.na(f22_hm[i])))
+}
+fp22_hm$ran <- sample(-10:10, 633, rep = TRUE)
+fp22_hm$ranpts <- fp22_hm$Pts.+ fp22_hm$ran
+
+
+ML_ex <- lmer(Pts. ~ overall + value_eur + age + (1|club_name), data=hm_data, REML = FALSE) 
+display(ML_ex)
+
+c<-predict(ML_ex, newx=fp22_hm)
+dim(hm_data)
+rbind(y_te, predict(ML_ex, newx=fp22_hm))
+length(y_te)
+dim(predict(ML_ex, newx=fp22_hm))
+dim(fp22_hm)
+
+hm_data$pred <- predict(ML_ex, newx=hm_data)
+hm_data[c("pred", "Pts.")]
+cor(hm_data$pred, hm_data$Pts.)
+
+
+grouped <- hm_data %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
+cor(grouped$pred, grouped$Pts.)
+
+# TO DO
+# add season column and group by season. 
+# run on test data and see how well it works on new dataset
