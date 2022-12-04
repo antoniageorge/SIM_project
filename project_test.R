@@ -1,19 +1,19 @@
 library(tidyverse)
 library(glmnet)
 library(gridExtra)
-PATH <- '~/Desktop'
-source(file.path(PATH,"./Fifa22/helper_functions/routines_seminar1.R"))
+setwd("~/Desktop")
+source(file.path("./SIM_project/helper_functions/routines_seminar1.R"))
 library("readxl")
 
 # Load datasets
-f22 <- read_csv("./Fifa22/players_22.csv")
-f21 <- read_csv("./Fifa22/players_21.csv")
-f20 <- read_csv("./Fifa22/players_20.csv")
-f19 <- read_csv("./Fifa22/players_19.csv")
-f18 <- read_csv("./Fifa22/players_18.csv")
-f17 <- read_csv("./Fifa22/players_17.csv")
-f16 <- read_csv("./Fifa22/players_16.csv")
-f15 <- read_csv("./Fifa22/players_15.csv")
+f22 <- read_csv("./SIM_project/players_22.csv")
+f21 <- read_csv("./SIM_project/players_21.csv")
+f20 <- read_csv("./SIM_project/players_20.csv")
+f19 <- read_csv("./SIM_project/players_19.csv")
+f18 <- read_csv("./SIM_project/players_18.csv")
+f17 <- read_csv("./SIM_project/players_17.csv")
+f16 <- read_csv("./SIM_project/players_16.csv")
+f15 <- read_csv("./SIM_project/players_15.csv")
 
 # Remove some unnecessary columns.
 f22 <- f22 %>% select(-c("player_face_url", "club_logo_url", "club_flag_url", 
@@ -57,12 +57,6 @@ length(colnames(f18))
 length(colnames(f17))
 length(colnames(f16))
 length(colnames(f15))
-
-
-# Import end of season results
-# So from 2020-2021 season, add results to 
-final_table <- read_csv("./Fifa22/fifa2020-2021.csv")
-final_table <- final_table[c('Team', 'Pts')]
 
 
 ### TIMELINE ###
