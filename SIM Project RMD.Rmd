@@ -1,7 +1,8 @@
 ---
 title: "Stats Project"
-output: html_document
+author: "Miguel/Antonia"
 date: "2022-12-19"
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -10,14 +11,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Load packages and set working directory
 ```{r}
-library(tidyverse)
 library(glmnet)
 library(gridExtra)
-setwd("~/Desktop")
+#source(file.path("./SIM_project/helper_functions/routines_seminar1.R"))
 library("readxl")
 library(lme4)
 library(arm)
-#PATH= "./stats_project/SIM_project-main"
+library(tidyverse)
 ```
 
 Set seed
@@ -26,63 +26,52 @@ set.seed(1234)
 ```
 
 Load data
-```{r}
-f22 <- read_csv("./stats_project/SIM_project-main/data/players_22.csv")
-f21 <- read_csv("./stats_project/SIM_project-main//data/players_21.csv")
-f20 <- read_csv("./stats_project/SIM_project-main//data/players_20.csv")
-f19 <- read_csv("./stats_project/SIM_project-main//data/players_19.csv")
-f18 <- read_csv("./stats_project/SIM_project-main//data/players_18.csv")
-f17 <- read_csv("./stats_project/SIM_project-main//data/players_17.csv")
-f16 <- read_csv("./stats_project/SIM_project-main//data/players_16.csv")
-f15 <- read_csv("./stats_project/SIM_project-main//data/players_15.csv")
+```{r load, include=FALSE}
+f22 <- read_csv("./data/players_22.csv")
+f21 <- read_csv("./data/players_21.csv")
+f20 <- read_csv("./data/players_20.csv")
+f19 <- read_csv("./data/players_19.csv")
+f18 <- read_csv("./data/players_18.csv")
+f17 <- read_csv("./data/players_17.csv")
+f16 <- read_csv("./data/players_16.csv")
+f15 <- read_csv("./data/players_15.csv")
 ```
 
 Remove some unnecessary columns
 ```{r}
-f22 <- f22 %>% select(-c("player_face_url", "club_logo_url", "club_flag_url", 
+f22 <- f22 %>% dplyr::select(-c("player_face_url", "club_logo_url", "club_flag_url", 
                          "nation_logo_url", "nation_flag_url", "player_url",
                          "real_face"))
 
-f21 <- f21 %>% select(-c("player_face_url", "club_logo_url", "club_flag_url", 
+f21 <- f21 %>% dplyr::select(-c("player_face_url", "club_logo_url", "club_flag_url", 
                          "nation_logo_url", "nation_flag_url", "player_url",
                          "real_face"))
 
-f20 <- f20 %>% select(-c("player_face_url", "club_logo_url", "club_flag_url", 
+f20 <- f20 %>% dplyr::select(-c("player_face_url", "club_logo_url", "club_flag_url", 
                          "nation_logo_url", "nation_flag_url", "player_url",
                          "real_face"))
 
-f19 <- f19 %>% select(-c("player_face_url", "club_logo_url", "club_flag_url", 
+f19 <- f19 %>% dplyr::select(-c("player_face_url", "club_logo_url", "club_flag_url", 
                          "nation_logo_url", "nation_flag_url", "player_url",
                          "real_face"))
 
-f18 <- f18 %>% select(-c("player_face_url", "club_logo_url", "club_flag_url", 
+f18 <- f18 %>% dplyr::select(-c("player_face_url", "club_logo_url", "club_flag_url", 
                          "nation_logo_url", "nation_flag_url", "player_url",
                          "real_face"))
 
-f17 <- f17 %>% select(-c("player_face_url", "club_logo_url", "club_flag_url", 
+f17 <- f17 %>% dplyr::select(-c("player_face_url", "club_logo_url", "club_flag_url", 
                          "nation_logo_url", "nation_flag_url", "player_url",
                          "real_face"))
 
-f16 <- f16 %>% select(-c("player_face_url", "club_logo_url", "club_flag_url", 
+f16 <- f16 %>% dplyr::select(-c("player_face_url", "club_logo_url", "club_flag_url", 
                          "nation_logo_url", "nation_flag_url", "player_url",
                          "real_face"))
 
-f15 <- f15 %>% select(-c("player_face_url", "club_logo_url", "club_flag_url", 
+f15 <- f15 %>% dplyr::select(-c("player_face_url", "club_logo_url", "club_flag_url", 
                          "nation_logo_url", "nation_flag_url", "player_url",
                          "real_face"))
 ```
 
-Check they all have the same length
-```{r}
-length(colnames(f22))
-length(colnames(f21))
-length(colnames(f20))
-length(colnames(f19))
-length(colnames(f18))
-length(colnames(f17))
-length(colnames(f16))
-length(colnames(f15))
-```
 
 ### TIMELINE ###
 # Season Starts     (Fall 2020)
@@ -97,14 +86,14 @@ length(colnames(f15))
 
 Import REAL end of season info (total number of points, wins, losses, etc. for each team)
 ```{r}
-table22 <- read_excel("./stats_project/SIM_project-main/data/LaLiga_results.xlsx", sheet = "2021-2022")
-table21 <- read_excel("./stats_project/SIM_project-main/data/LaLiga_results.xlsx", sheet = "2020-2021")
-table20 <- read_excel("./stats_project/SIM_project-main/data/LaLiga_results.xlsx", sheet = "2019-2020")
-table19 <- read_excel("./stats_project/SIM_project-main/data/LaLiga_results.xlsx", sheet = "2018-2019")
-table18 <- read_excel("./stats_project/SIM_project-main/data/LaLiga_results.xlsx", sheet = "2017-2018")
-table17 <- read_excel("./stats_project/SIM_project-main/data/LaLiga_results.xlsx", sheet = "2016-2017")
-table16 <- read_excel("./stats_project/SIM_project-main/data/LaLiga_results.xlsx", sheet = "2015-2016")
-table15 <- read_excel("./stats_project/SIM_project-main/data/LaLiga_results.xlsx", sheet = "2014-2015")
+table22 <- read_excel("./data/LaLiga_results.xlsx", sheet = "2021-2022")
+table21 <- read_excel("./data/LaLiga_results.xlsx", sheet = "2020-2021")
+table20 <- read_excel("./data/LaLiga_results.xlsx", sheet = "2019-2020")
+table19 <- read_excel("./data/LaLiga_results.xlsx", sheet = "2018-2019")
+table18 <- read_excel("./data/LaLiga_results.xlsx", sheet = "2017-2018")
+table17 <- read_excel("./data/LaLiga_results.xlsx", sheet = "2016-2017")
+table16 <- read_excel("./data/LaLiga_results.xlsx", sheet = "2015-2016")
+table15 <- read_excel("./data/LaLiga_results.xlsx", sheet = "2014-2015")
 ```
 
 View data
@@ -129,9 +118,11 @@ Pick only the columns that we want.
 ```{r}
 cols_to_choose <- c("overall", "potential", "value_eur", "wage_eur", "age", #"dob", 
                     "height_cm", "weight_kg",  "club_name", #"club_team_id",
-                    "league_level", "preferred_foot", "weak_foot", "skill_moves", "international_reputation", #"work_rate", #"body_type"                  
+                    #"league_level", 
+                    "preferred_foot", "weak_foot", "skill_moves", "international_reputation", #"work_rate", #"body_type"                  
                     "release_clause_eur", #"player_tags", #"player_traits", 
                     "pace", 
+                    "club_position",
                     "shooting", "passing", "dribbling", "defending",                  
                     "physic", "attacking_crossing", "attacking_finishing", "attacking_heading_accuracy", 
                     "attacking_short_passing", "attacking_volleys", "skill_dribbling", "skill_curve",                
@@ -193,10 +184,10 @@ f18_gp <- left_join(f18_gp, table18, by = c("club_name"="Equipo"))
 f17_gp <- left_join(f17_gp, table17, by = c("club_name"="Equipo"))
 f16_gp <- left_join(f16_gp, table16, by = c("club_name"="Equipo"))
 f15_gp <- left_join(f15_gp, table15, by = c("club_name"="Equipo"))
-# Check for NAs in dataframe.
-for(i in 1:length(cols_to_choose)){
-  print(sum(is.na(f22_gp[i])))
-}
+# # Check for NAs in dataframe.
+# for(i in 1:length(cols_to_choose)){
+#   print(sum(is.na(f22_gp[i])))
+# }
 ```
 
 Add a multiplier on points for second division teams going to first division.
@@ -220,14 +211,14 @@ f22_gp <- f22_gp[, !colnames(f22_gp) %in% cols_to_drop]
 TRAIN
 ```{r}
 y <- new_df$Pts.
-x <- select(new_df, -c("Pts.", "club_name") ) %>% as.matrix() %>% scale()
+x <- dplyr::select(new_df, -c("Pts.", "club_name") ) %>% as.matrix() %>% scale()
 ```
 
 TEST 
 #### NEEDS TO BE SAME SCALE!!
 ```{r}
 y_te <- f22_gp[c("club_name","Pts.")]
-x_te <- select(f22_gp, -c("Pts.", "club_name") ) %>% as.matrix() %>% scale()
+x_te <- dplyr::select(f22_gp, -c("Pts.", "club_name") ) %>% as.matrix() %>% scale()
 ```
 # -----------------------------------
 # ----------- LASSO MODEL -----------
@@ -235,7 +226,7 @@ x_te <- select(f22_gp, -c("Pts.", "club_name") ) %>% as.matrix() %>% scale()
 ```{r}
 fit.lasso= cv.glmnet(x=x, y=y, family = "gaussian", nfolds = 5, alpha=1, type.measure = "mse")
 
-# #auc
+# model
 lasso.err <- assess.glmnet(fit.lasso, newx=x, newy=y, family='gaussian')
 lasso.err 
 
@@ -246,7 +237,9 @@ plot(fit.lasso)
 b.lasso= as.vector(coef(fit.lasso, s='lambda.min'))
 betas = data.frame("word" = c("intercept", colnames(x)), "beta_hat"= round(b.lasso, 5))
 betas %>% arrange(desc(abs(beta_hat)))
+```
 
+```{r diff lambda}
 # not as good but just to try something else
 b.lasso= as.vector(coef(fit.lasso, s=0.1))
 betas = data.frame("word" = c("intercept", colnames(x)), "beta_hat"= round(b.lasso, 5))
@@ -257,6 +250,8 @@ predictions <- predict(fit.lasso, newx = x_te)
 y_te$pred <-predictions
 y_te <- y_te %>% arrange(desc(Pts.))
 ```
+
+
 ```{r}
 # Test other model on 22 dataset
 predictions <- predict(fit.lasso, newx = x_te)
@@ -284,9 +279,9 @@ fp16_hm <- left_join(f16_sp, table16, by = c("club_name"="Equipo"))
 fp15_hm <- left_join(f15_sp, table15, by = c("club_name"="Equipo"))
 
 
-cols_to_drop <- c( "Pos.", "PJ", "G", "E", "P", "GF", "GC", "Dif.", "Des", "Asc")
+cols_to_drop <- c( "Pos.", "PJ", "G", "E", "P", "GF", "GC", "Dif.", "Des", "Asc", "league_level")
 
-y_te <- fp22_hm$Pts.
+y_te2 <- fp22_hm[c("Pts.","club_name")]
 hm_data <-bind_rows(fp21_hm, fp20_hm, fp19_hm, fp18_hm, fp17_hm, fp16_hm, fp15_hm)
 hm_data<- hm_data[, !colnames(hm_data) %in% cols_to_drop] 
 fp22_hm<- fp22_hm[, !colnames(fp22_hm) %in% cols_to_drop] 
@@ -296,30 +291,80 @@ fp22_hm<- fp22_hm[, !colnames(fp22_hm) %in% cols_to_drop]
 #   } else x)
 
 # Check for NAs in dataframe.
-for(i in 1:length(cols_to_choose)){
-  print(sum(is.na(f22_hm[i])))
+for(i in 1:length(colnames(fp22_hm))){
+  print(sum(is.na(fp22_hm[i])))
 }
-fp22_hm$ran <- sample(-10:10, 633, rep = TRUE)
-fp22_hm$ranpts <- fp22_hm$Pts.+ fp22_hm$ran
+# fp22_hm$ran <- sample(-10:10, 633, rep = TRUE)
+# fp22_hm$ranpts <- fp22_hm$Pts.+ fp22_hm$ran
+
+# later add right/left foot as binary variable
+
+hm_datasc <- hm_data %>% 
+  dplyr::select(-c(preferred_foot, club_name, Pts., club_position)) %>% 
+  scale() %>% 
+  data.frame () %>% 
+  mutate_if(is.character, as.numeric)
+hm_datasc <- cbind(hm_datasc, 'club_name'= hm_data$club_name, 'Pts.'=hm_data$Pts., 'club_position'=hm_data$club_position) 
+
+fp22_hm_sc <- fp22_hm %>% 
+  dplyr::select(-c(preferred_foot, club_name, Pts., club_position)) %>% 
+  scale() %>% 
+  data.frame () %>% 
+  mutate_if(is.character, as.numeric)
+fp22_hm_sc <- cbind(fp22_hm_sc, 'club_name'= fp22_hm$club_name, 'Pts.'=fp22_hm$Pts., 'club_position'=fp22_hm$club_position) 
 
 
-ML_ex <- lmer(Pts. ~ overall + value_eur + age + (1|club_name), data=hm_data, REML = FALSE) 
-display(ML_ex)
+hm_datasc <- data.frame(hm_datasc)
+fp22_hm_sc <- data.frame(fp22_hm_sc)
 
-c<-predict(ML_ex, newx=fp22_hm)
-dim(hm_data)
-rbind(y_te, predict(ML_ex, newx=fp22_hm))
-length(y_te)
-dim(predict(ML_ex, newx=fp22_hm))
-dim(fp22_hm)
-
-hm_data$pred <- predict(ML_ex, newx=hm_data)
-hm_data[c("pred", "Pts.")]
-cor(hm_data$pred, hm_data$Pts.)
+str(hm_datasc)
 
 
-grouped <- hm_data %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
-cor(grouped$pred, grouped$Pts.)
+ML_ex <- lmer(Pts. ~age + international_reputation + (1|club_position) + (1|club_name), data=hm_datasc,  REML = FALSE) 
+c<-predict(ML_ex, newdata=fp22_hm_sc)
+ML_ex
+d <- f22 %>% filter(league_name=='Spain Primera Division')
+compare <- cbind(y_te2, c, d$short_name)
+compare <- compare %>% mutate("diff" = Pts.-c)
+mean((compare$diff)^2)
+
+
+
+# -----------------------------
+# -----------  Value  ---------
+# -----------------------------
+
+hm_datasc["value_eur"] <- hm_data$value_eur
+fp22_hm_sc["value_eur"] <- fp22_hm$value_eur
+
+ML_ex_o <- lmer(value_eur ~  age + overall + international_reputation + wage_eur + (1|club_position), data=hm_datasc,  REML = FALSE)
+v_pred <-predict(ML_ex_o, newdata=fp22_hm_sc)
+ML_ex_o
+
+compare_o <- cbind(y_te2, v_pred, d[c("short_name", "overall", "value_eur")])
+compare_o <- compare_o %>% mutate("diff" = round(value_eur-v_pred))
+mean((compare_o$diff)^2)^0.5
+# 9026972
+
+# -----------------------------
+# -----------  Wage  ----------
+# -----------------------------
+
+hm_datasc["wage_eur"] <- hm_data$wage_eur
+fp22_hm_sc["wage_eur"] <- fp22_hm$wage_eur
+
+ML_ex_o <- lmer(wage_eur ~  age + overall + international_reputation + (1|club_position) + (1|club_name), data=hm_datasc,  REML = FALSE) 
+w_pred <-predict(ML_ex_o, newdata=fp22_hm_sc)
+ML_ex_o
+
+compare_w <- cbind(y_te2, v_pred, d[c("short_name", "overall", "wage_eur")])
+compare_w <- compare_w %>% mutate("diff" = round(wage_eur-w_pred))
+mean((compare_w$diff)^2)^0.5
+# club_pos: 29473.9
+# club_name: 24591.14 
+# both:  23680.58             age + overall + international_reputation + (1|club_position) + (1|club_name)
+
+
 
 ```
 
@@ -330,8 +375,8 @@ cor(grouped$pred, grouped$Pts.)
 ```{r}
 # Using scaled_new_df dataframe for Bayesian regression model
 scaled_new_df <- bind_cols(x, y)
-names(scaled_new_df)[names(scaled_new_df) == '...54'] <- 'Pts.'
-scaled_new_df <- select(scaled_new_df, -c(league_level))
+names(scaled_new_df)[names(scaled_new_df) == '...53'] <- 'Pts.'
+scaled_new_df
 ```
 
 ```{r}
@@ -354,7 +399,7 @@ pred_bayes_compare
 ```
 Mean squared error to assess accuracy of Bayesian Regression
 ```{r}
-rmse_bayes = mean((pred_bayes_compare$Pts. - pred_bayes_compare$predictions_bayes)^2)
+rmse_bayes = mean((pred_bayes_compare$Pts. - pred_bayes_compare$predictions_bayes)^2)^0.5
 rmse_bayes
 ```
 
@@ -387,7 +432,6 @@ library(ggplot2)
 ggplot(data=new_df, aes(Pts.)) + geom_histogram(bins = 20) + ggtitle("Distribution of Points Scored")
 #hist(new_df$Pts.)
 ```
-```{r pressure, echo=FALSE}
+```{r pressure1, echo=FALSE}
 ggplot(data=new_df, aes(Pts.)) + geom_density()
 ```
-
