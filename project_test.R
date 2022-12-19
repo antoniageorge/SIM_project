@@ -100,6 +100,7 @@ cols_to_choose <- c("overall", "potential", "value_eur", "wage_eur", "age", #"do
                     "league_level", "preferred_foot", "weak_foot", "skill_moves", "international_reputation", #"work_rate", #"body_type"                  
                     "release_clause_eur", #"player_tags", #"player_traits", 
                     "pace", 
+                    "club_position",
                     "shooting", "passing", "dribbling", "defending",                  
                     "physic", "attacking_crossing", "attacking_finishing", "attacking_heading_accuracy", 
                     "attacking_short_passing", "attacking_volleys", "skill_dribbling", "skill_curve",                
@@ -176,15 +177,15 @@ new_df <- bind_rows(f21_gp, f20_gp, f19_gp, f18_gp, f17_gp, f16_gp, f15_gp)
 colnames(new_df)
 cols_to_drop <- c( "Pos.", "PJ", "G", "E", "P", "GF", "GC", "Dif.", "Des", "Asc")
 new_df <- new_df[, !colnames(new_df) %in% cols_to_drop]
-f22_gp <- f22_gp[, !colnames(f22_sp) %in% cols_to_drop]
+f22_gp <- f22_gp[, !colnames(f22_gp) %in% cols_to_drop]
 
 # train
 y <- new_df$Pts.
-x <- select(new_df, -c("Pts.", "club_name") ) %>% as.matrix() %>% scale()
+x <- new_df %>% dplyr::select(-c("Pts.", "club_name","league_level")) %>% as.matrix() %>% scale()
 
 #test #### NEEDS TO BE SAME SCALE!!
-y_te <- f22_sp[c("club_name","Pts.")]
-x_te <- select(f22_sp, -c("Pts.", "club_name") ) %>% as.matrix() %>% scale()
+y_te <- f22_gp[c("club_name","Pts.")]
+x_te <- dplyr::select(f22_gp, -c("Pts.", "club_name","league_level") ) %>% as.matrix() %>% scale()
 
 ## LASSO
 fit.lasso= cv.glmnet(x=x, y=y, family = "gaussian", nfolds = 5, alpha=1, type.measure = "mse")
@@ -240,45 +241,109 @@ fp16_hm <- left_join(f16_sp, table16, by = c("club_name"="Equipo"))
 fp15_hm <- left_join(f15_sp, table15, by = c("club_name"="Equipo"))
 
 
-cols_to_drop <- c( "Pos.", "PJ", "G", "E", "P", "GF", "GC", "Dif.", "Des", "Asc")
+cols_to_drop <- c( "Pos.", "PJ", "G", "E", "P", "GF", "GC", "Dif.", "Des", "Asc", "league_level")
 
-y_te <- fp22_hm$Pts.
+y_te <- fp22_hm[c("Pts.","club_name")]
 hm_data <-bind_rows(fp21_hm, fp20_hm, fp19_hm, fp18_hm, fp17_hm, fp16_hm, fp15_hm)
 hm_data<- hm_data[, !colnames(hm_data) %in% cols_to_drop] 
 fp22_hm<- fp22_hm[, !colnames(fp22_hm) %in% cols_to_drop] 
-
-
-
 
 # fp22_hm[] <- lapply(fp22_hm, function(x) if(is.numeric(x)){
 #   scale(x, center=TRUE, scale=TRUE)
 #   } else x)
 
 # Check for NAs in dataframe.
-for(i in 1:length(cols_to_choose)){
-  print(sum(is.na(f22_hm[i])))
+for(i in 1:length(colnames(fp22_hm))){
+  print(sum(is.na(fp22_hm[i])))
 }
-fp22_hm$ran <- sample(-10:10, 633, rep = TRUE)
-fp22_hm$ranpts <- fp22_hm$Pts.+ fp22_hm$ran
+# fp22_hm$ran <- sample(-10:10, 633, rep = TRUE)
+# fp22_hm$ranpts <- fp22_hm$Pts.+ fp22_hm$ran
+
+# later add right/left foot as binary variable
+
+hm_datasc <- hm_data %>% 
+  dplyr::select(-c(preferred_foot, club_name, Pts., club_position)) %>% 
+  scale() %>% 
+  data.frame () %>% 
+  mutate_if(is.character, as.numeric)
+hm_datasc <- cbind(hm_datasc, 'club_name'= hm_data$club_name, 'Pts.'=hm_data$Pts., 'club_position'=hm_data$club_position) 
+
+fp22_hm_sc <- fp22_hm %>% 
+  dplyr::select(-c(preferred_foot, club_name, Pts., club_position)) %>% 
+  scale() %>% 
+  data.frame () %>% 
+  mutate_if(is.character, as.numeric)
+fp22_hm_sc <- cbind(fp22_hm_sc, 'club_name'= fp22_hm$club_name, 'Pts.'=fp22_hm$Pts., 'club_position'=fp22_hm$club_position) 
 
 
-ML_ex <- lmer(Pts. ~ overall + value_eur + age + (1|club_name), data=hm_data, REML = FALSE) 
-display(ML_ex)
+hm_datasc <- data.frame(hm_datasc)
+fp22_hm_sc <- data.frame(fp22_hm_sc)
 
-c<-predict(ML_ex, newx=fp22_hm)
-dim(hm_data)
-rbind(y_te, predict(ML_ex, newx=fp22_hm))
-length(y_te)
-dim(predict(ML_ex, newx=fp22_hm))
-dim(fp22_hm)
-
-hm_data$pred <- predict(ML_ex, newx=hm_data)
-hm_data[c("pred", "Pts.")]
-cor(hm_data$pred, hm_data$Pts.)
+str(hm_datasc)
 
 
-grouped <- hm_data %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
-cor(grouped$pred, grouped$Pts.)
+ML_ex <- lmer(Pts. ~age + international_reputation + (1|club_name:club_position) + (1|club_name), data=hm_datasc,  REML = FALSE) 
+c<-predict(ML_ex, newdata=fp22_hm_sc)
+ML_ex
+d <- f22 %>% filter(league_name=='Spain Primera Division')
+compare <- cbind(y_te, c, d$short_name)
+compare <- compare %>% mutate("diff" = Pts.-c)
+mean((compare$diff)^2)
+
+
+
+# -----------------------------
+# -----------  Value  ---------
+# -----------------------------
+
+hm_datasc["value_eur"] <- hm_data$value_eur
+fp22_hm_sc["value_eur"] <- fp22_hm$value_eur
+
+ML_ex_o <- lmer(value_eur ~  age + overall + international_reputation + wage_eur + (1|club_position), data=hm_datasc,  REML = FALSE)
+v_pred <-predict(ML_ex_o, newdata=fp22_hm_sc)
+ML_ex_o
+
+compare_o <- cbind(y_te, v_pred, d[c("short_name", "overall", "value_eur")])
+compare_o <- compare_o %>% mutate("diff" = round(value_eur-v_pred))
+mean((compare_o$diff)^2)^0.5
+# 9026972
+
+# -----------------------------
+# -----------  Wage  ----------
+# -----------------------------
+
+hm_datasc["wage_eur"] <- hm_data$wage_eur
+fp22_hm_sc["wage_eur"] <- fp22_hm$wage_eur
+
+ML_ex_o <- lmer(wage_eur ~  age + overall + international_reputation + (1|club_position) + (1|club_name), data=hm_datasc,  REML = FALSE) 
+w_pred <-predict(ML_ex_o, newdata=fp22_hm_sc)
+ML_ex_o
+
+compare_w <- cbind(y_te, v_pred, d[c("short_name", "overall", "wage_eur")])
+compare_w <- compare_w %>% mutate("diff" = round(wage_eur-w_pred))
+mean((compare_w$diff)^2)^0.5
+# club_pos: 29473.9
+# club_name: 24591.14 
+# both:  23680.58             age + overall + international_reputation + (1|club_position) + (1|club_name)
+
+
+
+
+
+
+
+
+
+# predict(ML_ex, newx=fp22_hm_sc)
+# dim(fp22_hm)
+# 
+# hm_data$pred <- predict(ML_ex, newx=hm_data)
+# hm_data[c("pred", "Pts.")]
+# cor(hm_data$pred, hm_data$Pts.)
+# 
+# 
+# grouped <- hm_data %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean))
+# cor(grouped$pred, grouped$Pts.)
 
 # TO DO
 # add season column and group by season. 
