@@ -14,3 +14,12 @@ Heirarchical model
 
 ### Table of contents
 The project_test.r file contains the most updated version of our R code for the project.
+
+### Data
+players_xx.csv : data for all players in xx season
+LaLigaResults.xlsx : end of season team data for 2015-2022 seasons
+
+### Files
+modify_data.R : cleans FIFA kaggle datasets to reduce noise
+project_test.R : rough draft of analysis
+SIM Project RMD.Rmd : final analysis with explanations
