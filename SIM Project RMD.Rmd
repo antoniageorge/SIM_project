@@ -406,11 +406,6 @@ mean((compare_w$diff)^2)^0.5
 mean(hm_data$wage_eur)
 
 
-
-
-
-
-
 ```
 
 # -----------------------------------
@@ -420,46 +415,80 @@ mean(hm_data$wage_eur)
 ```{r}
 # Using scaled_new_df dataframe for Bayesian regression model
 scaled_new_df <- bind_cols(x, y)
-names(scaled_new_df)[names(scaled_new_df) == '...53'] <- 'Pts.'
-scaled_new_df
+names(scaled_new_df)[names(scaled_new_df) == '...54'] <- 'Pts.'
+scaled_new_df <- select(scaled_new_df, -c(league_level))
 ```
 
+Fitting the model
 ```{r}
 library(rstanarm)
 
 # Fit the model:
-model <- rstanarm::stan_glm(Pts. ~ ., family = gaussian(), data=scaled_new_df)
-
-# View a summary of the model:
-summary(model)
+bayes_reg_model <- rstanarm::stan_glm(Pts. ~ ., family = gaussian(), data=scaled_new_df)
 ```
 
+View a summary of the model:
+```{r}
+summary(bayes_reg_model)
+```
+
+To obtain summary of medians
+```{r}
+bayes_reg_model
+```
+
+To obtain prediction intervals:
+```{r}
+m= coef(bayes_reg_model)
+q= posterior_interval(bayes_reg_model)[1:length(m),]
+b.intervals= round(cbind(m, q), 3)
+b.intervals
+```
+
+Making predictions:
 ```{r}
 # Making predictions:
 x_te_df <- as.data.frame(x_te)
-predictions_bayes <- predict(model, newdata = x_te_df)
+predictions_bayes <- predict(bayes_reg_model, newdata = x_te_df)
 
 pred_bayes_compare <- cbind(y_te, predictions_bayes)
 pred_bayes_compare
 ```
+
 Mean squared error to assess accuracy of Bayesian Regression
 ```{r}
-rmse_bayes = mean((pred_bayes_compare$Pts. - pred_bayes_compare$predictions_bayes)^2)^0.5
-rmse_bayes
+mse_bayes = mean((pred_bayes_compare$Pts. - pred_bayes_compare$predictions_bayes)^2)
+mse_bayes
+```
+
+Root mean squared error to assess accuracy of Bayesian Regression
+```{r}
+root_mse_bayes = sqrt(mean((pred_bayes_compare$Pts. - pred_bayes_compare$predictions_bayes)^2))
+root_mse_bayes
+```
+
+Correlation between predicted and actual values of testing set
+```{r}
+cor(pred_bayes_compare$Pts., pred_bayes_compare$predictions_bayes)
 ```
 
 
 # -----------------------------------
 # ---- BAYESIAN MODEL SELECTION -----
 # -----------------------------------
+
+Fitting the model
 ```{r}
 library(mombf)
 # Fit Bayesian model selection model
-fit.bayesreg <- modelSelection(Pts. ~ ., data=scaled_new_df, priorCoef=zellnerprior(taustd=1), priorDelta=modelbbprior(1,1))
-
-# View summary
-head(postProb(fit.bayesreg),10)
+fit.bayesmodelselection <- modelSelection(Pts. ~ ., data=scaled_new_df, priorCoef=zellnerprior(taustd=1), priorDelta=modelbbprior(1,1))
 ```
+
+Viewing summary of bayesian model selection
+```{r}
+head(postProb(fit.bayesmodelselection),10)
+```
+
 
 # -----------------------------------
 # --------- VISUALIZATIONS ----------
@@ -472,11 +501,13 @@ colnames(scaled_new_df)
 ```{r}
 scaled_new_df[1, ]
 ```
+
 ```{r pressure, echo=FALSE}
 library(ggplot2)
 ggplot(data=new_df, aes(Pts.)) + geom_histogram(bins = 20) + ggtitle("Distribution of Points Scored")
 #hist(new_df$Pts.)
 ```
+
 ```{r pressure1, echo=FALSE}
 ggplot(data=new_df, aes(Pts.)) + geom_density()
 ```
