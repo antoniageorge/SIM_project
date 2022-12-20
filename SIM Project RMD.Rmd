@@ -155,6 +155,33 @@ f16_sp <- f16_sp[cols_to_choose]
 f15_sp <- f15_sp[cols_to_choose]
 ```
 
+Make simplified position: GK/Defense/Midfield/Forward/Reserve
+```{r}
+get_pos <- function(setx) {
+  setx$pos <- c(rep("POS", nrow(setx)))
+  defc <- setx$club_position %in% c("LCB", "LB", "RB", "RCB", "CB", "RWB", "LWB")
+  midc <- setx$club_position %in% c("CDM","LCM","RCM","RM","CAM","LW","LM","RW","RDM","LDM","CM")
+  forc <- setx$club_position %in% c("RS", "ST", "LS", "CF", "LF", "RF")
+  subc <- setx$club_position %in% c("SUB", "RES")
+  gkc <- setx$club_position %in% c("GK")
+  setx$pos[defc] <- "defender"
+  setx$pos[midc] <- "midfielder"
+  setx$pos[forc] <- "forward"
+  setx$pos[subc] <- "sub/res"
+  setx$pos[gkc] <- "goalkeeper"
+  return(setx)
+}
+
+f22_sp <- get_pos(f22_sp)
+f21_sp <- get_pos(f21_sp)
+f20_sp <- get_pos(f20_sp)
+f19_sp <- get_pos(f19_sp)
+f18_sp <- get_pos(f18_sp)
+f17_sp <- get_pos(f17_sp)
+f16_sp <- get_pos(f16_sp)
+f15_sp <- get_pos(f15_sp)
+```
+
 Preprocessing of data
 ```{r}
 # Replace NAs by 0
@@ -300,18 +327,25 @@ for(i in 1:length(colnames(fp22_hm))){
 # later add right/left foot as binary variable
 
 hm_datasc <- hm_data %>% 
-  dplyr::select(-c(preferred_foot, club_name, Pts., club_position)) %>% 
+  dplyr::select(-c(preferred_foot, club_name, Pts., club_position, pos)) %>% 
   scale() %>% 
   data.frame () %>% 
   mutate_if(is.character, as.numeric)
-hm_datasc <- cbind(hm_datasc, 'club_name'= hm_data$club_name, 'Pts.'=hm_data$Pts., 'club_position'=hm_data$club_position) 
+hm_datasc <- cbind(hm_datasc, 'club_name'= hm_data$club_name, 
+                   'Pts.'=hm_data$Pts., 
+                   'club_position'=hm_data$club_position, 
+                   'pos'=hm_data$pos) 
 
 fp22_hm_sc <- fp22_hm %>% 
-  dplyr::select(-c(preferred_foot, club_name, Pts., club_position)) %>% 
+  dplyr::select(-c(preferred_foot, club_name, Pts., club_position, pos)) %>% 
   scale() %>% 
   data.frame () %>% 
   mutate_if(is.character, as.numeric)
-fp22_hm_sc <- cbind(fp22_hm_sc, 'club_name'= fp22_hm$club_name, 'Pts.'=fp22_hm$Pts., 'club_position'=fp22_hm$club_position) 
+fp22_hm_sc <- cbind(fp22_hm_sc, 
+                    'club_name'= fp22_hm$club_name, 
+                    'Pts.'=fp22_hm$Pts., 
+                    'club_position'=fp22_hm$club_position,
+                    'pos'=fp22_hm$pos) 
 
 
 hm_datasc <- data.frame(hm_datasc)
@@ -320,20 +354,23 @@ fp22_hm_sc <- data.frame(fp22_hm_sc)
 str(hm_datasc)
 
 
-ML_ex <- lmer(Pts. ~age + international_reputation + (1|club_position) + (1|club_name), data=hm_datasc,  REML = FALSE) 
-c<-predict(ML_ex, newdata=fp22_hm_sc)
+ML_ex <- lmer(Pts. ~age + overall + international_reputation  + (1|pos), data=hm_datasc,  REML = FALSE) 
+pts_pred<-predict(ML_ex, newdata=fp22_hm_sc)
 ML_ex
 d <- f22 %>% filter(league_name=='Spain Primera Division')
-compare <- cbind(y_te2, c, d$short_name)
-compare <- compare %>% mutate("diff" = Pts.-c)
-mean((compare$diff)^2)
+compare <- cbind(y_te2, pts_pred, d$short_name)
+compare <- compare %>% mutate("diff" = Pts.-pts_pred)
+sd = mean((compare$diff)^2)^0.5
+sd
+#[1] 12.16879 age + overall + international_reputation  + (1|pos)
+#[1] 7.522987  age + overall + international_reputation  + (1|club_name)
+#[1] 7.4702 age + overall + international_reputation  + (1|club_name:pos)
 
+compare
+```
 
-
-# -----------------------------
-# -----------  Value  ---------
-# -----------------------------
-
+Try to predict player value from other data.
+```{r}
 hm_datasc["value_eur"] <- hm_data$value_eur
 fp22_hm_sc["value_eur"] <- fp22_hm$value_eur
 
@@ -345,24 +382,32 @@ compare_o <- cbind(y_te2, v_pred, d[c("short_name", "overall", "value_eur")])
 compare_o <- compare_o %>% mutate("diff" = round(value_eur-v_pred))
 mean((compare_o$diff)^2)^0.5
 # 9026972
+```
 
-# -----------------------------
-# -----------  Wage  ----------
-# -----------------------------
-
+Try to predict player wage from data
+```{r}
 hm_datasc["wage_eur"] <- hm_data$wage_eur
 fp22_hm_sc["wage_eur"] <- fp22_hm$wage_eur
 
-ML_ex_o <- lmer(wage_eur ~  age + overall + international_reputation + (1|club_position) + (1|club_name), data=hm_datasc,  REML = FALSE) 
+ML_ex_o <- lmer(wage_eur ~  age + overall + international_reputation + (1|club_name:pos), data=hm_datasc,  REML = FALSE) 
 w_pred <-predict(ML_ex_o, newdata=fp22_hm_sc)
 ML_ex_o
 
 compare_w <- cbind(y_te2, v_pred, d[c("short_name", "overall", "wage_eur")])
 compare_w <- compare_w %>% mutate("diff" = round(wage_eur-w_pred))
 mean((compare_w$diff)^2)^0.5
-# club_pos: 29473.9
-# club_name: 24591.14 
-# both:  23680.58             age + overall + international_reputation + (1|club_position) + (1|club_name)
+# 24548.54 (1|pos) + (1|club_name)
+# 24591.14 (1|club_name)
+# 23680.58 (1|club_position) + (1|club_name)
+# 21600.1(1|club_name:pos)
+# 21468.42 (1|club_name) + (1|club_name:pos)
+
+
+mean(hm_data$wage_eur)
+
+
+
+
 
 
 
