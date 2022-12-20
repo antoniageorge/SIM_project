@@ -274,16 +274,20 @@ betas %>% arrange(desc(abs(beta_hat)))
 
 # Test base model on 22 dataset
 predictions <- predict(fit.lasso, newx = x_te)
-y_te$pred <-predictions
-y_te <- y_te %>% arrange(desc(Pts.))
+y_te_sorted <- y_te
+y_te_sorted$pred <-predictions
+y_te_sorted <- y_te_sorted %>% arrange(desc(Pts.))
+y_te_sorted
 ```
 
 
 ```{r}
 # Test other model on 22 dataset
 predictions <- predict(fit.lasso, newx = x_te)
-y_te$pred <-predictions
-y_te <- y_te %>% arrange(desc(Pts.))
+y_te_sorted <- y_te
+y_te_sorted$pred <-predictions
+y_te_sorted <- y_te_sorted %>% arrange(desc(Pts.))
+y_te_sorted
 # For dataset
 # compute averages by player
 # calculate month of birth for player
