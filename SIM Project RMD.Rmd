@@ -74,15 +74,15 @@ f15 <- f15 %>% dplyr::select(-c("player_face_url", "club_logo_url", "club_flag_u
 
 
 ### TIMELINE ###
-# Season Starts     (Fall 2020)
-# Season Ends         (Spring 2021)
-# Game (FIFA 2022) is made and players are rated (Summer 2021) 
-# New Teams (Summer 2021) (These come from the 2022 edition of the game because they are from the 2021-2022 season.)
-# Predictions are Made for next season (Summer 2021)
-# New Season (2021 -> 2022)
+Season Starts     (Fall 2020)
+Season Ends         (Spring 2021)
+Game (FIFA 2022) is made and players are rated (Summer 2021) 
+New Teams (Summer 2021) (These come from the 2022 edition of the game because they are from the 2021-2022 season.)
+Predictions are Made for next season (Summer 2021)
+New Season (2021 -> 2022)
 
-# So, we are going to use the FIFA 2022 ratings to predict the 2021-2022 season with the FIFA 2022 rosters. 
-# The 2021-2022 points data goes with FIFA 2022, since that is what we are trying to predict.
+So, we are going to use the FIFA 2022 ratings to predict the 2021-2022 season with the FIFA 2022 rosters. 
+The 2021-2022 points data goes with FIFA 2022, since that is what we are trying to predict.
 
 Import REAL end of season info (total number of points, wins, losses, etc. for each team)
 ```{r}
@@ -98,6 +98,8 @@ table15 <- read_excel("./data/LaLiga_results.xlsx", sheet = "2014-2015")
 
 View data
 ```{r}
+
+table
 f22
 colnames(f22)
 ```
@@ -215,6 +217,7 @@ f15_gp <- left_join(f15_gp, table15, by = c("club_name"="Equipo"))
 # for(i in 1:length(cols_to_choose)){
 #   print(sum(is.na(f22_gp[i])))
 # }
+
 ```
 
 Add a multiplier on points for second division teams going to first division.
@@ -242,7 +245,6 @@ x <- dplyr::select(new_df, -c("Pts.", "club_name") ) %>% as.matrix() %>% scale()
 ```
 
 TEST 
-#### NEEDS TO BE SAME SCALE!!
 ```{r}
 y_te <- f22_gp[c("club_name","Pts.")]
 x_te <- dplyr::select(f22_gp, -c("Pts.", "club_name") ) %>% as.matrix() %>% scale()
@@ -267,35 +269,18 @@ betas %>% arrange(desc(abs(beta_hat)))
 ```
 
 ```{r diff lambda}
-# not as good but just to try something else
-b.lasso= as.vector(coef(fit.lasso, s=0.1))
-betas = data.frame("word" = c("intercept", colnames(x)), "beta_hat"= round(b.lasso, 5))
-betas %>% arrange(desc(abs(beta_hat)))
 
 # Test base model on 22 dataset
 predictions <- predict(fit.lasso, newx = x_te)
 y_te_sorted <- y_te
 y_te_sorted$pred <-predictions
 y_te_sorted <- y_te_sorted %>% arrange(desc(Pts.))
-y_te_sorted
+mean((y_te_sorted$pred-y_te_sorted$Pts.)^2)^0.5
+
+
 ```
 
 
-```{r}
-# Test other model on 22 dataset
-predictions <- predict(fit.lasso, newx = x_te)
-y_te_sorted <- y_te
-y_te_sorted$pred <-predictions
-y_te_sorted <- y_te_sorted %>% arrange(desc(Pts.))
-y_te_sorted
-# For dataset
-# compute averages by player
-# calculate month of birth for player
-# modify goalkeeper stats to 0 for 
-
-# For model
-# different values of lambda
-```
 # -----------------------------------
 # ------ HIERARCHICAL MODEL ---------
 # -----------------------------------
@@ -355,30 +340,56 @@ fp22_hm_sc <- cbind(fp22_hm_sc,
 hm_datasc <- data.frame(hm_datasc)
 fp22_hm_sc <- data.frame(fp22_hm_sc)
 
+
 str(hm_datasc)
 
+# Important Variables from LASSO
+# international_reputation	10.71554			
+# movement_reactions	1.87503			
+# age	-1.60636			
+# attacking_heading_accuracy	1.19219			
+# power_jumping	0.82994			
+# power_stamina	0.65873			
+# goalkeeping_positioning
 
-ML_ex <- lmer(Pts. ~age + overall + international_reputation  + (1|pos), data=hm_datasc,  REML = FALSE) 
+ML_ex <- lmer(Pts. ~international_reputation + movement_reactions + 
+                age + attacking_heading_accuracy + 
+                power_jumping + power_stamina + goalkeeping_positioning + (1|club_name:pos), data=hm_datasc,  REML = FALSE) 
 pts_pred<-predict(ML_ex, newdata=fp22_hm_sc)
 ML_ex
 d <- f22 %>% filter(league_name=='Spain Primera Division')
 compare <- cbind(y_te2, pts_pred, d$short_name)
 compare <- compare %>% mutate("diff" = Pts.-pts_pred)
-sd = mean((compare$diff)^2)^0.5
-sd
+sd_players = mean((compare$diff)^2)^0.5
+sd_players
+
+compare_mean <- compare %>% group_by(club_name) %>% summarise(across(where(is.numeric), mean)) %>% arrange(desc(Pts.))
 #[1] 12.16879 age + overall + international_reputation  + (1|pos)
 #[1] 7.522987  age + overall + international_reputation  + (1|club_name)
 #[1] 7.4702 age + overall + international_reputation  + (1|club_name:pos)
 
-compare
+# 12.42    (1|pos)
+# 7.512    (1|club_name)
+# 7.464    (1|club_name:pos)
+
+
+
+sd_teams = (mean(compare_mean$diff^2))^0.5
+sd_teams
+
+
+
+
+compare_mean
 ```
 
 Try to predict player value from other data.
 ```{r}
+
 hm_datasc["value_eur"] <- hm_data$value_eur
 fp22_hm_sc["value_eur"] <- fp22_hm$value_eur
 
-ML_ex_o <- lmer(value_eur ~  age + overall + international_reputation + wage_eur + (1|club_position), data=hm_datasc,  REML = FALSE)
+ML_ex_o <- lmer(value_eur ~  age + overall + international_reputation + wage_eur + (1|club_name:pos), data=hm_datasc,  REML = FALSE)
 v_pred <-predict(ML_ex_o, newdata=fp22_hm_sc)
 ML_ex_o
 
@@ -386,6 +397,8 @@ compare_o <- cbind(y_te2, v_pred, d[c("short_name", "overall", "value_eur")])
 compare_o <- compare_o %>% mutate("diff" = round(value_eur-v_pred))
 mean((compare_o$diff)^2)^0.5
 # 9026972
+
+mean(compare_o$value_eur)
 ```
 
 Try to predict player wage from data
@@ -393,17 +406,23 @@ Try to predict player wage from data
 hm_datasc["wage_eur"] <- hm_data$wage_eur
 fp22_hm_sc["wage_eur"] <- fp22_hm$wage_eur
 
-ML_ex_o <- lmer(wage_eur ~  age + overall + international_reputation + (1|club_name:pos), data=hm_datasc,  REML = FALSE) 
+
+
+
+
+
+
+
+ML_ex_o <- lmer(wage_eur ~  age + overall + international_reputation + (1|club_name) + (1|pos), data=hm_datasc,  REML = FALSE) 
 w_pred <-predict(ML_ex_o, newdata=fp22_hm_sc)
 ML_ex_o
 
 compare_w <- cbind(y_te2, v_pred, d[c("short_name", "overall", "wage_eur")])
 compare_w <- compare_w %>% mutate("diff" = round(wage_eur-w_pred))
 mean((compare_w$diff)^2)^0.5
-# 24548.54 (1|pos) + (1|club_name)
 # 24591.14 (1|club_name)
-# 23680.58 (1|club_position) + (1|club_name)
-# 21600.1(1|club_name:pos)
+# 24548.54 (1|pos) + (1|club_name)
+# 21600.1  (1|club_name:pos)
 # 21468.42 (1|club_name) + (1|club_name:pos)
 
 
