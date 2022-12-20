@@ -293,7 +293,7 @@ y_te <- y_te %>% arrange(desc(Pts.))
 # different values of lambda
 ```
 # -----------------------------------
-# --- BAYESIAN HIERARCHICAL MODEL ---
+# ------ HIERARCHICAL MODEL ---------
 # -----------------------------------
 ```{r}
 fp22_hm <- left_join(f22_sp, table22, by = c("club_name"="Equipo"))
@@ -415,8 +415,7 @@ mean(hm_data$wage_eur)
 ```{r}
 # Using scaled_new_df dataframe for Bayesian regression model
 scaled_new_df <- bind_cols(x, y)
-names(scaled_new_df)[names(scaled_new_df) == '...54'] <- 'Pts.'
-scaled_new_df <- select(scaled_new_df, -c(league_level))
+names(scaled_new_df)[names(scaled_new_df) == '...53'] <- 'Pts.'
 ```
 
 Fitting the model
